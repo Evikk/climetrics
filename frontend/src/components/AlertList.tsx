@@ -45,7 +45,6 @@ const AlertList: React.FC<AlertListProps> = ({ refreshKey }) => {
 
   const formatLocation = (location: IAlert["location"]) => {
     if (location.type === "City") {
-      // Ensure value is treated as string, satisfying ReactNode requirement
       return String(location.value);
     } else if (typeof location.value === "object" && location.value !== null) {
       return `Lat: ${location.value.lat}, Lon: ${location.value.lon}`;

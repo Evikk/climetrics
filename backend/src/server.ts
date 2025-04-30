@@ -4,89 +4,76 @@ dotenv.config();
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import mongoose from "mongoose";
-import { EventEmitter } from "events";
 
 import alertRoutes from "./routes/alerts.route";
 import weatherRoutes from "./routes/weather.route";
 import errorHandler from "./middleware/errorHandler";
 import Logger from "./utils/logger";
 import SchedulerService from "./services/scheduler.service";
-import { IAlert } from "@acme/types";
 
-const app: Express = express();
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5001;
-const eventEmitter = new EventEmitter();
-let clients: { id: number; response: Response }[] = [];
+class Server {
+  private app: Express;
+  private port: number;
+  private schedulerService: SchedulerService;
 
-// Middleware
-app.use(cors());
-app.use(express.json());
+  constructor() {
+    this.app = express();
+    this.port = process.env.PORT ? parseInt(process.env.PORT, 10) : 5001;
+    this.schedulerService = new SchedulerService();
 
-const uri = process.env.MONGODB_URI;
+    this.initializeMiddleware();
+    this.initializeRoutes();
+    this.initializeErrorHandler();
+  }
 
-if (!uri) {
-  Logger.error("Error: MONGODB_URI is not defined in .env file");
-  process.exit(1);
+  private initializeMiddleware(): void {
+    this.app.use(cors());
+    this.app.use(express.json());
+  }
+
+  private async connectToDatabase(): Promise<void> {
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+      Logger.error("Error: MONGODB_URI is not defined in .env file");
+      process.exit(1);
+    }
+
+    try {
+      await mongoose.connect(uri);
+      Logger.info("MongoDB database connection established successfully");
+    } catch (err) {
+      Logger.error("MongoDB connection error:", { error: err });
+      process.exit(1); // Exit if DB connection fails
+    }
+  }
+
+  private startScheduler(): void {
+    const cronExpression = process.env.SCHEDULER_CRON_EXPRESSION || "* * * * *";
+    this.schedulerService.start(cronExpression);
+    Logger.info(`Scheduler started with cron expression: ${cronExpression}`);
+  }
+
+  private initializeRoutes(): void {
+    this.app.get("/", (req: Request, res: Response) => {
+      res.send("Climetrics Backend is running!");
+    });
+    this.app.use("/api/alerts", alertRoutes);
+    this.app.use("/api/weather", weatherRoutes);
+  }
+
+  private initializeErrorHandler(): void {
+    this.app.use(errorHandler);
+  }
+
+  public async start(): Promise<void> {
+    await this.connectToDatabase();
+    this.startScheduler();
+
+    this.app.listen(this.port, () => {
+      Logger.info(`Server is running on port: ${this.port}`);
+    });
+  }
 }
 
-mongoose
-  .connect(uri)
-  .then(() => {
-    Logger.info("MongoDB database connection established successfully");
-
-    // --- Start Scheduler Service (after DB connection) ---
-    // Get cron expression from env or default to every minute
-    const cronExpression = process.env.SCHEDULER_CRON_EXPRESSION || "* * * * *";
-    const schedulerService = new SchedulerService(eventEmitter);
-    schedulerService.start(cronExpression);
-  })
-  .catch((err: Error) =>
-    Logger.error("MongoDB connection error:", { error: err })
-  );
-
-app.get("/", (req: Request, res: Response) => {
-  res.send("Weather Alert Backend is running!");
-});
-
-app.use("/api/alerts", alertRoutes);
-app.use("/api/weather", weatherRoutes);
-
-// --- SSE Endpoint ---
-app.get("/api/events", (req: Request, res: Response) => {
-  Logger.info("[SSE] Client connected");
-  res.setHeader("Content-Type", "text/event-stream");
-  res.setHeader("Cache-Control", "no-cache");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders();
-
-  const clientId = Date.now();
-  const newClient = {
-    id: clientId,
-    response: res,
-  };
-  clients.push(newClient);
-
-  res.write(`event: connected
-data: ${JSON.stringify({ clientId })}\n\n`);
-
-  const onAlertTriggered = (alert: IAlert) => {
-    Logger.debug(`[SSE] Sending alert ${alert._id} to client ${clientId}`);
-    res.write(`event: alertTriggered
-data: ${JSON.stringify(alert)}\n\n`);
-  };
-
-  eventEmitter.on("alertTriggered", onAlertTriggered);
-
-  req.on("close", () => {
-    Logger.info(`[SSE] Client ${clientId} disconnected`);
-    clients = clients.filter((client) => client.id !== clientId);
-    eventEmitter.removeListener("alertTriggered", onAlertTriggered);
-    res.end();
-  });
-});
-
-app.use(errorHandler);
-
-app.listen(port, () => {
-  Logger.info(`Server is running on port: ${port}`);
-});
+const server = new Server();
+server.start();

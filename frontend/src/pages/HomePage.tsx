@@ -11,9 +11,7 @@ import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
 
 const HomePage: React.FC = () => {
-  // State for the location input field
   const [locationInput, setLocationInput] = useState<string>("London");
-  // State for the location currently being displayed/fetched
   const [currentLocation, setCurrentLocation] = useState<string>("London");
 
   const handleLocationChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -24,17 +22,12 @@ const HomePage: React.FC = () => {
     if (locationInput.trim()) {
       setCurrentLocation(locationInput.trim());
     } else {
-      // Optionally provide feedback if input is empty
       console.warn("Location input cannot be empty.");
-      // Or set a default location like setCurrentLocation("London");
     }
   };
 
-  // Style with MUI components
   return (
-    <Container maxWidth="lg" sx={{ py: 4 }}>
-      {" "}
-      {/* Added padding */}
+    <Container maxWidth="xl" sx={{ py: 4 }}>
       <Typography
         variant="h4"
         component="h1"
@@ -45,21 +38,12 @@ const HomePage: React.FC = () => {
         Weather Dashboard
       </Typography>
       <Grid container spacing={3} justifyContent="center">
-        {" "}
-        {/* Center the grid items */}
-        {/* Weather Section */}
         <Grid size={{ xs: 12, md: 8, lg: 6 }}>
-          {" "}
-          {/* Adjusted width for better centering */} {/* Takes full width */}
           <Paper elevation={3} sx={{ p: 3 }}>
-            {" "}
-            {/* Card-like container */}
             <Typography variant="h6" component="h2" gutterBottom>
               Current Weather
             </Typography>
             <Box sx={{ display: "flex", alignItems: "center", mb: 2 }}>
-              {" "}
-              {/* Input group */}
               <TextField
                 label="Location"
                 variant="outlined"
@@ -67,11 +51,15 @@ const HomePage: React.FC = () => {
                 value={locationInput}
                 onChange={handleLocationChange}
                 placeholder="Enter City or lat,lon"
-                fullWidth // Takes available width
-                sx={{ mr: 1 }} // Margin right
+                fullWidth
+                sx={{ mr: 1 }}
               />
-              <Button variant="contained" onClick={handleFetchWeather}>
-                Get Weather
+              <Button
+                variant="contained"
+                onClick={handleFetchWeather}
+                size="medium"
+              >
+                Get
               </Button>
             </Box>
             <WeatherDisplay location={currentLocation} />

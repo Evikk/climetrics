@@ -28,7 +28,6 @@ const isCoordinates = (location: string): boolean => {
 
 /**
  * Fetches real-time weather data for a given location.
- * Handles both real API calls and mock responses based on USE_MOCK_API env var.
  * @param location String representing the location (e.g., "London" or "40.71,-74.00")
  * @returns A Promise resolving to the WeatherData object.
  * @throws An error if fetching fails or the API key is missing (when not using mocks).
@@ -37,12 +36,7 @@ export const fetchWeatherData = async (
   location: string
 ): Promise<WeatherData> => {
   Logger.debug(`[WeatherService] Fetching weather for location: ${location}`);
-  console.log(
-    "USE_MOCK_API",
-    USE_MOCK_API,
-    "TOMORROW_IO_API_KEY",
-    TOMORROW_IO_API_KEY
-  );
+
   // --- MOCK API LOGIC ---
   if (USE_MOCK_API) {
     Logger.warn(
