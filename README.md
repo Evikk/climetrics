@@ -1,13 +1,13 @@
 # Full-Stack Weather Alert System
 
-This project is a full-stack weather alert system built. It allows users to define weather alerts based on location and conditions, checks weather data periodically using the Tomorrow.io API, and displays the current weather and triggered alerts via a React frontend.
+This project is a full-stack weather alert system. It allows users to create weather alerts based on location and conditions (e.g., temperature > 30°C). A backend service periodically checks real-time weather data from the Tomorrow.io API against these alerts. If an alert's condition is met, its status is updated to "triggered", and an optional SMS notification can be sent via Twilio. A React frontend provides a user interface to view current weather, create/manage alerts, and see which alerts are currently triggered.
 
 ## Technologies Used
 
-- **Backend:** Node.js, Express, TypeScript, MongoDB (using Mongoose)
-- **Frontend:** React, Vite, TypeScript
+- **Backend:** Node.js, Express, TypeScript, MongoDB (Mongoose), `node-schedule` (for task scheduling), `twilio` (for SMS), `zod` (for validation)
+- **Frontend:** React, Vite, TypeScript, `@mui/material` (for UI components)
 - **Database:** MongoDB
-- **External API:** Tomorrow.io Weather API
+- **External APIs:** Tomorrow.io (Weather Data), Twilio (SMS Notifications)
 
 ## Project Structure
 
@@ -20,7 +20,9 @@ This repository uses a monorepo structure:
 
 - **Node.js:** Version 20.x or higher recommended (due to frontend dependencies). Using `nvm` (Node Version Manager) is suggested.
 - **npm:** Should be installed with Node.js.
-- **Tomorrow.io API Key:** Obtain an API key from Tomorrow.io. [https://app.tomorrow.io/signup](https://app.tomorrow.io/signup)
+- **MongoDB URI:** Connection string for your MongoDB database (local or cloud-hosted like MongoDB Atlas).
+- **Tomorrow.io API Key:** Obtain an API key from [Tomorrow.io](https://app.tomorrow.io/signup).
+- **Twilio Account:** Obtain an Account SID, Auth Token, and a Twilio phone number from [Twilio](https://www.twilio.com/try-twilio).
 
 ## Setup Instructions
 
