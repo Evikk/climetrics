@@ -33,7 +33,7 @@ export const getAllAlerts = async (
   next: NextFunction
 ) => {
   try {
-    const alerts = await Alert.find().lean(); // Use .lean() for plain objects
+    const alerts = await Alert.find().lean();
     res.status(200).json(alerts);
   } catch (error) {
     Logger.error("Error fetching all alerts", { error });

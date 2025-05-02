@@ -1,34 +1,19 @@
-import mongoose, { Schema, Document } from "mongoose";
-import {
-  ILocation as SharedLocation,
-  ICondition as SharedCondition,
-  WeatherParameter,
-} from "@acme/types";
+import mongoose, { Schema, Document, Types } from "mongoose";
+import { ILocation, ICondition, WeatherParameter, IAlert } from "@acme/types";
 
-export interface IAlert extends Document {
-  _id: mongoose.Schema.Types.ObjectId;
-  name?: string;
-  location: SharedLocation;
-  condition: SharedCondition;
-  status: "active" | "triggered" | "inactive";
-  notifySMS?: boolean;
-  phoneNumber?: string;
-  lastCheckedAt?: Date;
-  lastTriggeredAt?: Date;
-  createdAt: Date;
-  updatedAt: Date;
+export interface IAlertDocument extends Omit<IAlert, "_id">, Document {
+  _id: Types.ObjectId;
 }
 
-const LocationSchema = new Schema<SharedLocation>(
+const LocationSchema = new Schema<ILocation>(
   {
     type: { type: String, required: true, enum: ["City", "Coordinates"] },
-    value: { type: Schema.Types.Mixed, required: true }, // Can be string (City) or object (Coords)
+    value: { type: Schema.Types.Mixed, required: true },
   },
-  { _id: false } // Don't create a separate _id for the subdocument
+  { _id: false }
 );
 
-// Use shared interface for Schema definition
-const ConditionSchema = new Schema<SharedCondition>(
+const ConditionSchema = new Schema<ICondition>(
   {
     parameter: {
       type: String,
@@ -49,9 +34,8 @@ const ConditionSchema = new Schema<SharedCondition>(
   { _id: false }
 );
 
-const AlertSchema: Schema<IAlert> = new Schema(
+const AlertSchema: Schema<IAlertDocument> = new Schema(
   {
-    // _id is automatically added by Mongoose
     name: { type: String, required: false, trim: true },
     location: { type: LocationSchema, required: true },
     condition: { type: ConditionSchema, required: true },
@@ -66,9 +50,9 @@ const AlertSchema: Schema<IAlert> = new Schema(
     lastCheckedAt: { type: Date, required: false },
     lastTriggeredAt: { type: Date, required: false },
   },
-  { timestamps: true } // Automatically adds createdAt and updatedAt fields
+  { timestamps: true }
 );
 
-const Alert = mongoose.model<IAlert>("Alert", AlertSchema);
+const Alert = mongoose.model<IAlertDocument>("Alert", AlertSchema);
 
 export default Alert;

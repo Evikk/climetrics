@@ -2,9 +2,9 @@ import schedule from "node-schedule";
 import { Twilio } from "twilio";
 
 import Logger from "../utils/logger";
-import AlertModel from "../models/Alert.model";
+import AlertModel, { IAlertDocument } from "../models/Alert.model";
 import { fetchWeatherData, WeatherData } from "./weather.service";
-import { IAlert, ICondition, WeatherParameter } from "@acme/types";
+import { IAlert, ICondition, ILocation, WeatherParameter } from "@acme/types";
 
 // Map condition parameters to WeatherData properties if they differ
 const parameterMap: { [key in WeatherParameter]?: keyof WeatherData } = {
@@ -74,7 +74,7 @@ class SchedulerService {
     }
   }
 
-  private async sendNotification(alert: IAlert): Promise<void> {
+  private async sendNotification(alert: IAlertDocument): Promise<void> {
     Logger.info(
       `${this.schedulerServiceName} Handling triggered alert ${alert._id}`
     );
@@ -96,82 +96,81 @@ class SchedulerService {
     }
   }
 
+  private getLocationString(location: ILocation): string {
+    if (location.type === "City") {
+      return location.value as string;
+    } else if (location.type === "Coordinates") {
+      const coords = location.value as { lat: number; lon: number };
+      return `${coords.lat},${coords.lon}`;
+    } else {
+      throw new Error(`Unknown location type encountered: ${location.type}`);
+    }
+  }
+
+  private shouldSendNotification(
+    alert: IAlertDocument,
+    statusChanged: boolean
+  ): boolean {
+    return (
+      alert.status === "triggered" &&
+      statusChanged &&
+      !!alert.notifySMS &&
+      !!alert.phoneNumber
+    );
+  }
+
   /**
    * Processes a single alert: fetches weather, checks condition, updates status, and sends notification if needed.
    * @param alert The alert object to process.
    */
-  private async _processAlert(alert: IAlert): Promise<void> {
-    let locationString: string;
-    if (alert.location.type === "City") {
-      locationString = alert.location.value as string;
-    } else if (alert.location.type === "Coordinates") {
-      const coords = alert.location.value as { lat: number; lon: number };
-      locationString = `${coords.lat},${coords.lon}`;
-    } else {
-      Logger.warn(
-        `${this.schedulerServiceName} Unknown location type for alert ${alert._id}`
-      );
-      return; // Skip this alert if location type is unknown
-    }
-
+  private async _processAlert(alert: IAlertDocument): Promise<void> {
+    const locationString = this.getLocationString(alert.location);
     try {
       Logger.debug(
         `${this.schedulerServiceName} Fetching weather for alert ${alert._id} at location ${locationString}`
       );
       const weatherData = await fetchWeatherData(locationString);
-
       const conditionMet = this.checkCondition(alert.condition, weatherData);
 
-      const updates: Partial<IAlert> & { $set?: any } = {
-        $set: { lastCheckedAt: new Date() }, // Always update lastCheckedAt
+      const fieldsToUpdate: Partial<IAlertDocument> = {
+        lastCheckedAt: new Date(),
       };
+
       let statusChanged = false;
+      let newStatus = alert.status;
 
       if (conditionMet && alert.status === "active") {
-        // Condition met, was active -> Trigger it
-        updates.status = "triggered";
-        updates.lastTriggeredAt = new Date();
+        newStatus = "triggered";
         statusChanged = true;
+        fieldsToUpdate.status = newStatus;
+        fieldsToUpdate.lastTriggeredAt = new Date();
         Logger.info(
           `${this.schedulerServiceName} Alert ${alert._id} triggered!`
         );
       } else if (!conditionMet && alert.status === "triggered") {
-        // Condition NOT met, was triggered -> Reset it
-        updates.status = "active";
+        newStatus = "active";
         statusChanged = true;
+        fieldsToUpdate.status = newStatus;
+        // Note: lastTriggeredAt remains the timestamp of the last trigger event
         Logger.info(
           `${this.schedulerServiceName} Alert ${alert._id} condition no longer met. Resetting to active.`
         );
       }
 
-      // Apply updates if status changed or just to update lastCheckedAt
-      if (statusChanged || updates.$set?.lastCheckedAt) {
-        const updatedAlert = await AlertModel.findByIdAndUpdate(
-          alert._id,
-          updates,
-          { new: true }
-        );
+      const updatedAlert = (await AlertModel.findByIdAndUpdate(
+        alert._id,
+        { $set: fieldsToUpdate },
+        { new: true }
+      )) as IAlertDocument;
 
-        // Send notification only when it first becomes triggered
-        if (
-          updatedAlert &&
-          updatedAlert.status === "triggered" &&
-          statusChanged && // Ensure status actually changed to triggered in this cycle
-          updatedAlert.notifySMS &&
-          updatedAlert.phoneNumber
-        ) {
-          const alertObject: IAlert = {
-            ...updatedAlert.toObject(),
-            _id: updatedAlert._id.toString(),
-          };
-          await this.sendNotification(alertObject);
-        }
+      // Send notification only if the alert just transitioned to 'triggered'
+      if (this.shouldSendNotification(updatedAlert, statusChanged)) {
+        await this.sendNotification(updatedAlert);
       }
     } catch (error: any) {
       Logger.error(
         `${this.schedulerServiceName} Error processing alert ${alert._id} for location ${locationString}: ${error.message}`
       );
-      // Continue to the next alert even if one fails
     }
   }
 
@@ -183,14 +182,14 @@ class SchedulerService {
     try {
       const alertsToCheck = await AlertModel.find({
         status: { $in: ["active", "triggered"] },
-      }).lean(); // Using lean() for performance as we don't need full Mongoose documents here
+      });
 
       Logger.debug(
         `${this.schedulerServiceName} Found ${alertsToCheck.length} alerts to check (active or triggered).`
       );
 
       for (const alert of alertsToCheck) {
-        await this._processAlert(alert); // Cast necessary because lean returns plain objects
+        await this._processAlert(alert);
       }
 
       Logger.info(`${this.schedulerServiceName} Finished checkAlerts cycle.`);
@@ -198,7 +197,6 @@ class SchedulerService {
       Logger.error(
         `${this.schedulerServiceName} Error fetching alerts to check: ${error.message}`
       );
-      // If fetching the list fails, we log and stop the cycle for this run
     }
   }
 
@@ -220,7 +218,6 @@ class SchedulerService {
     Logger.info(
       `${this.schedulerServiceName} Starting scheduler with cron: ${cronExpression}`
     );
-    // Schedule the job
     this.job = schedule.scheduleJob(cronExpression, async () => {
       await this.checkAlerts();
     });
@@ -248,6 +245,4 @@ class SchedulerService {
   }
 }
 
-// Export an instance or the class itself depending on usage preference
-// Exporting the class allows for configuration/dependency injection if needed later
 export default SchedulerService;
