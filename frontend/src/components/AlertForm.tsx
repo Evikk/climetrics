@@ -14,11 +14,15 @@ import Grid from "@mui/material/Grid";
 import Alert from "@mui/material/Alert";
 import Collapse from "@mui/material/Collapse";
 import CircularProgress from "@mui/material/CircularProgress";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
 
 interface AlertFormData {
   name?: string;
   location: ILocation;
   condition: ICondition;
+  notifySMS?: boolean;
+  phoneNumber?: string;
 }
 
 interface AlertFormProps {
@@ -37,6 +41,8 @@ const AlertForm: React.FC<AlertFormProps> = ({ onAlertCreated }) => {
     useState<ICondition["parameter"]>("temperature");
   const [operator, setOperator] = useState<ICondition["operator"]>(">");
   const [threshold, setThreshold] = useState<string>("");
+  const [notifySMS, setNotifySMS] = useState<boolean>(false);
+  const [phoneNumber, setPhoneNumber] = useState<string>("");
 
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -77,6 +83,12 @@ const AlertForm: React.FC<AlertFormProps> = ({ onAlertCreated }) => {
       return;
     }
 
+    if (notifySMS && !phoneNumber.trim()) {
+      setError("Phone number is required when SMS notification is enabled.");
+      setSubmitting(false);
+      return;
+    }
+
     const newAlertData: AlertFormData = {
       name: name.trim() || undefined,
       location: locationInput,
@@ -85,6 +97,8 @@ const AlertForm: React.FC<AlertFormProps> = ({ onAlertCreated }) => {
         operator,
         threshold: thresholdNum,
       },
+      notifySMS,
+      phoneNumber: notifySMS ? phoneNumber.trim() : undefined,
     };
 
     try {
@@ -99,6 +113,8 @@ const AlertForm: React.FC<AlertFormProps> = ({ onAlertCreated }) => {
       setParameter("temperature");
       setOperator(">");
       setLocationType("City");
+      setNotifySMS(false);
+      setPhoneNumber("");
       onAlertCreated();
       // Hide success message after a delay
       setTimeout(() => setSuccess(null), 3000);
@@ -254,6 +270,35 @@ const AlertForm: React.FC<AlertFormProps> = ({ onAlertCreated }) => {
             disabled={submitting}
           />
         </Grid>
+
+        <Grid size={{ xs: 12 }}>
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={notifySMS}
+                onChange={(e) => setNotifySMS(e.target.checked)}
+                disabled={submitting}
+              />
+            }
+            label="Notify via SMS when triggered"
+          />
+        </Grid>
+
+        {notifySMS && (
+          <Grid size={{ xs: 12 }}>
+            <TextField
+              label="Phone Number"
+              variant="outlined"
+              size="small"
+              fullWidth
+              required
+              value={phoneNumber}
+              onChange={(e) => setPhoneNumber(e.target.value)}
+              disabled={submitting}
+              placeholder="e.g., +15551234567"
+            />
+          </Grid>
+        )}
 
         <Grid size={{ xs: 12 }}>
           <Button

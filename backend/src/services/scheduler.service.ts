@@ -89,7 +89,7 @@ class SchedulerService {
       await this.notificationService.messages.create({
         body: message,
         from: process.env.TWILIO_PHONE_NUMBER,
-        to: "+972545610900", // TODO: Make recipient dynamic or configurable
+        to: alert.phoneNumber || "", // TODO: Make recipient dynamic or configurable
       });
     } catch (error) {
       console.error(error);
@@ -97,72 +97,108 @@ class SchedulerService {
   }
 
   /**
-   * Fetches active alerts, checks their conditions against current weather, and updates status.
+   * Processes a single alert: fetches weather, checks condition, updates status, and sends notification if needed.
+   * @param alert The alert object to process.
+   */
+  private async _processAlert(alert: IAlert): Promise<void> {
+    let locationString: string;
+    if (alert.location.type === "City") {
+      locationString = alert.location.value as string;
+    } else if (alert.location.type === "Coordinates") {
+      const coords = alert.location.value as { lat: number; lon: number };
+      locationString = `${coords.lat},${coords.lon}`;
+    } else {
+      Logger.warn(
+        `${this.schedulerServiceName} Unknown location type for alert ${alert._id}`
+      );
+      return; // Skip this alert if location type is unknown
+    }
+
+    try {
+      Logger.debug(
+        `${this.schedulerServiceName} Fetching weather for alert ${alert._id} at location ${locationString}`
+      );
+      const weatherData = await fetchWeatherData(locationString);
+
+      const conditionMet = this.checkCondition(alert.condition, weatherData);
+
+      const updates: Partial<IAlert> & { $set?: any } = {
+        $set: { lastCheckedAt: new Date() }, // Always update lastCheckedAt
+      };
+      let statusChanged = false;
+
+      if (conditionMet && alert.status === "active") {
+        // Condition met, was active -> Trigger it
+        updates.status = "triggered";
+        updates.lastTriggeredAt = new Date();
+        statusChanged = true;
+        Logger.info(
+          `${this.schedulerServiceName} Alert ${alert._id} triggered!`
+        );
+      } else if (!conditionMet && alert.status === "triggered") {
+        // Condition NOT met, was triggered -> Reset it
+        updates.status = "active";
+        statusChanged = true;
+        Logger.info(
+          `${this.schedulerServiceName} Alert ${alert._id} condition no longer met. Resetting to active.`
+        );
+      }
+
+      // Apply updates if status changed or just to update lastCheckedAt
+      if (statusChanged || updates.$set?.lastCheckedAt) {
+        const updatedAlert = await AlertModel.findByIdAndUpdate(
+          alert._id,
+          updates,
+          { new: true }
+        );
+
+        // Send notification only when it first becomes triggered
+        if (
+          updatedAlert &&
+          updatedAlert.status === "triggered" &&
+          statusChanged && // Ensure status actually changed to triggered in this cycle
+          updatedAlert.notifySMS &&
+          updatedAlert.phoneNumber
+        ) {
+          const alertObject: IAlert = {
+            ...updatedAlert.toObject(),
+            _id: updatedAlert._id.toString(),
+          };
+          await this.sendNotification(alertObject);
+        }
+      }
+    } catch (error: any) {
+      Logger.error(
+        `${this.schedulerServiceName} Error processing alert ${alert._id} for location ${locationString}: ${error.message}`
+      );
+      // Continue to the next alert even if one fails
+    }
+  }
+
+  /**
+   * Fetches active and triggered alerts, then processes each one.
    */
   public async checkAlerts(): Promise<void> {
     Logger.info(`${this.schedulerServiceName} Starting checkAlerts cycle...`);
     try {
-      const activeAlerts = await AlertModel.find({ status: "active" }).lean();
+      const alertsToCheck = await AlertModel.find({
+        status: { $in: ["active", "triggered"] },
+      }).lean(); // Using lean() for performance as we don't need full Mongoose documents here
+
       Logger.debug(
-        `${this.schedulerServiceName} Found ${activeAlerts.length} active alerts.`
+        `${this.schedulerServiceName} Found ${alertsToCheck.length} alerts to check (active or triggered).`
       );
 
-      for (const alert of activeAlerts) {
-        let locationString: string;
-        if (alert.location.type === "City") {
-          locationString = alert.location.value as string;
-        } else if (alert.location.type === "Coordinates") {
-          const coords = alert.location.value as { lat: number; lon: number };
-          locationString = `${coords.lat},${coords.lon}`;
-        } else {
-          Logger.warn(
-            `${this.schedulerServiceName} Unknown location type for alert ${alert._id}`
-          );
-          continue;
-        }
-
-        try {
-          Logger.debug(
-            `${this.schedulerServiceName} Fetching weather for alert ${alert._id} at location ${locationString}`
-          );
-          const weatherData = await fetchWeatherData(locationString);
-
-          const conditionMet = this.checkCondition(
-            alert.condition,
-            weatherData
-          );
-
-          if (conditionMet) {
-            const updatedAlert = await AlertModel.findByIdAndUpdate(
-              alert._id,
-              { status: "triggered" },
-              { new: true }
-            );
-
-            if (updatedAlert) {
-              Logger.info(
-                `${this.schedulerServiceName} Alert ${updatedAlert._id} triggered! Status updated.`
-              );
-
-              const alertObject: IAlert = {
-                ...updatedAlert.toObject(),
-                _id: updatedAlert._id.toString(),
-              };
-
-              await this.sendNotification(alertObject);
-            }
-          }
-        } catch (error: any) {
-          Logger.error(
-            `${this.schedulerServiceName} Error processing alert ${alert._id} for location ${locationString}: ${error.message}`
-          );
-        }
+      for (const alert of alertsToCheck) {
+        await this._processAlert(alert); // Cast necessary because lean returns plain objects
       }
+
       Logger.info(`${this.schedulerServiceName} Finished checkAlerts cycle.`);
     } catch (error: any) {
       Logger.error(
-        `${this.schedulerServiceName} Error fetching active alerts: ${error.message}`
+        `${this.schedulerServiceName} Error fetching alerts to check: ${error.message}`
       );
+      // If fetching the list fails, we log and stop the cycle for this run
     }
   }
 

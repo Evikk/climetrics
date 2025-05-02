@@ -46,11 +46,31 @@ const conditionSchema = z.object({
 
 // Schema for the body of the POST /api/alerts request
 export const createAlertSchema = z.object({
-  body: z.object({
-    name: z.string().optional(), // Optional name
-    location: locationSchema, // Required location object
-    condition: conditionSchema, // Required condition object
-  }),
+  body: z
+    .object({
+      name: z.string().optional(), // Optional name
+      location: locationSchema, // Required location object
+      condition: conditionSchema, // Required condition object
+      notifySMS: z.boolean().optional(), // Optional boolean
+      phoneNumber: z
+        .string()
+        .trim()
+        .min(1, "Phone number cannot be empty")
+        .optional(), // Optional string
+    })
+    .refine(
+      (data) => {
+        // If notifySMS is true, phoneNumber must be provided
+        if (data.notifySMS && !data.phoneNumber) {
+          return false;
+        }
+        return true;
+      },
+      {
+        message: "Phone number is required when SMS notification is enabled",
+        path: ["phoneNumber"], // Point error to the phoneNumber field
+      }
+    ),
 });
 
 // Type helper for inferring the shape of the validated body

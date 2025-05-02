@@ -19,12 +19,14 @@ export interface ICondition {
 // Define the shared Alert data structure
 // Note: This is the data shape, omitting Mongoose-specific Document type
 export interface IAlert {
-  _id: string; // Frontend usually needs the ID as a string
+  _id: string;
   name?: string;
   location: ILocation;
   condition: ICondition;
   status: "active" | "triggered" | "inactive";
-  lastCheckedAt?: string | Date; // Use string for API transfer, Date internally maybe
+  notifySMS?: boolean;
+  phoneNumber?: string;
+  lastCheckedAt?: string | Date;
   lastTriggeredAt?: string | Date;
   createdAt: string | Date;
   updatedAt: string | Date;

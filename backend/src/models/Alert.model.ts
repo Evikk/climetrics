@@ -11,6 +11,8 @@ export interface IAlert extends Document {
   location: SharedLocation;
   condition: SharedCondition;
   status: "active" | "triggered" | "inactive";
+  notifySMS?: boolean;
+  phoneNumber?: string;
   lastCheckedAt?: Date;
   lastTriggeredAt?: Date;
   createdAt: Date;
@@ -59,6 +61,8 @@ const AlertSchema: Schema<IAlert> = new Schema(
       enum: ["active", "triggered", "inactive"],
       default: "active",
     },
+    notifySMS: { type: Boolean, required: false, default: false },
+    phoneNumber: { type: String, required: false, trim: true },
     lastCheckedAt: { type: Date, required: false },
     lastTriggeredAt: { type: Date, required: false },
   },

@@ -10,12 +10,8 @@ export const createAlert = async (
   next: NextFunction
 ) => {
   try {
-    const { name, location, condition } = req.body;
-
     const newAlert = new Alert({
-      name,
-      location,
-      condition,
+      ...req.body,
       status: "active",
     });
     await newAlert.save();
