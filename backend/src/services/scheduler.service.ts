@@ -25,12 +25,6 @@ class SchedulerService {
     );
   }
 
-  /**
-   * Checks if the current weather data satisfies the alert condition.
-   * @param condition The alert condition (parameter, operator, threshold).
-   * @param weatherData The current weather data.
-   * @returns True if the condition is met, false otherwise.
-   */
   private checkCondition(
     condition: ICondition,
     weatherData: WeatherData
@@ -79,7 +73,7 @@ class SchedulerService {
       `${this.schedulerServiceName} Handling triggered alert ${alert._id}`
     );
 
-    const message = `[Climetrics] TriggeredAlert: ${
+    const message = `[Climetrics] Triggered Alert: ${
       alert.name || alert._id
     } - ${alert.condition.parameter} ${alert.condition.operator} ${
       alert.condition.threshold
@@ -89,7 +83,7 @@ class SchedulerService {
       await this.notificationService.messages.create({
         body: message,
         from: process.env.TWILIO_PHONE_NUMBER,
-        to: alert.phoneNumber || "", // TODO: Make recipient dynamic or configurable
+        to: alert.phoneNumber || "",
       });
     } catch (error) {
       console.error(error);
@@ -119,10 +113,6 @@ class SchedulerService {
     );
   }
 
-  /**
-   * Processes a single alert: fetches weather, checks condition, updates status, and sends notification if needed.
-   * @param alert The alert object to process.
-   */
   private async _processAlert(alert: IAlertDocument): Promise<void> {
     const locationString = this.getLocationString(alert.location);
     try {
@@ -174,19 +164,12 @@ class SchedulerService {
     }
   }
 
-  /**
-   * Fetches active and triggered alerts, then processes each one.
-   */
   public async checkAlerts(): Promise<void> {
     Logger.info(`${this.schedulerServiceName} Starting checkAlerts cycle...`);
     try {
       const alertsToCheck = await AlertModel.find({
         status: { $in: ["active", "triggered"] },
       });
-
-      Logger.debug(
-        `${this.schedulerServiceName} Found ${alertsToCheck.length} alerts to check (active or triggered).`
-      );
 
       for (const alert of alertsToCheck) {
         await this._processAlert(alert);
