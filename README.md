@@ -27,8 +27,8 @@ This repository uses a monorepo structure:
 1.  **Clone the Repository:**
 
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/Evikk/climetrics.git
+    cd climetrics
     ```
 
 2.  **Install Backend Dependencies:**
@@ -105,8 +105,6 @@ The backend includes unit/integration tests written with Jest.
 - **React/Vite Frontend:** Provides a modern, fast development experience and a component-based UI.
 - **MongoDB:** Flexible NoSQL database, good for evolving schemas. May require more careful data consistency management compared to SQL. Complex queries/joins can be less performant.
 - **`node-schedule` for Job Scheduling:** Simple implementation for periodic tasks running within the backend process.
-  - **Tradeoff:** If the backend server instance crashes, scheduled jobs stop. It doesn't scale horizontally well (multiple instances would run the same job multiple times). A more robust solution for production might involve a dedicated job queue system (e.g., BullMQ, RabbitMQ) or a distributed cron service.
-- **REST API:** Standard communication protocol between frontend and backend.
 
 **Current Limitations & Potential Improvements:**
 
@@ -114,6 +112,8 @@ The backend includes unit/integration tests written with Jest.
   - Alert deletion and editing functionality is not implemented.
   - User authentication/authorization: Currently, the system is open.
 - **Frontend Testing:** No automated tests are set up for the React frontend.
+- **E2E Testing:** E2E tests are missing.
+- **Scheduler:** If the backend server instance crashes, scheduled jobs stop. It doesn't scale horizontally well (multiple instances would run the same job multiple times). A more robust solution for production might involve a dedicated job queue system (e.g., RabbitMQ) or a distributed cron service.
 - **API Optimization:** Caching is not implemented, ideally we would like to cache the get weather API call with a somewhat short TTL (weather doesn't change that often).
 - **Configuration:** The job schedule interval (currently 5 minutes) is hardcoded.
 - **API Key Security:** The Tomorrow.io API key is stored in a `.env` file. For production, consider more secure secret management solutions.
