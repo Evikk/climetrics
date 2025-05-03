@@ -1,14 +1,11 @@
 export const mockWeatherData = {
   temperature: 15.5,
   windSpeed: 5.2,
-  precipitationIntensity: 0.1,
+  humidity: 50,
   weatherCode: 1001, // Example: Cloudy
 };
 
 export const getMockWeatherResponse = (location: string) => {
-  console.log(
-    `\\n--- MOCK API --- Returning mock weather for ${location} ---\\n`
-  );
   return {
     data: {
       values: {

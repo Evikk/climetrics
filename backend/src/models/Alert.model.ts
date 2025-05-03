@@ -21,7 +21,8 @@ const ConditionSchema = new Schema<ICondition>(
       enum: Object.values<WeatherParameter>([
         "temperature",
         "windSpeed",
-        "precipitation",
+        "humidity",
+        "weatherCode",
       ] as const),
     },
     operator: {

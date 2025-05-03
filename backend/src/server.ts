@@ -67,7 +67,7 @@ class Server {
 
   public async start(): Promise<void> {
     await this.connectToDatabase();
-    this.startScheduler();
+    // this.startScheduler();
 
     this.app.listen(this.port, () => {
       Logger.info(`Server is running on port: ${this.port}`);

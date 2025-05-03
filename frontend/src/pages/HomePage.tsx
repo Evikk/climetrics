@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import WeatherDisplay from "../components/WeatherDisplay";
+import { DEFAULT_WEATHER_FIELDS } from "../utils/weatherUtils";
 
-// Import MUI components
 import Container from "@mui/material/Container";
 import Grid from "@mui/material/Grid";
 import Paper from "@mui/material/Paper";
@@ -62,7 +62,10 @@ const HomePage: React.FC = () => {
                 Get
               </Button>
             </Box>
-            <WeatherDisplay location={currentLocation} />
+            <WeatherDisplay
+              location={currentLocation}
+              fields={DEFAULT_WEATHER_FIELDS}
+            />
           </Paper>
         </Grid>
       </Grid>

@@ -3,7 +3,11 @@ export interface ILocation {
   value: string | { lat: number; lon: number };
 }
 
-export type WeatherParameter = "temperature" | "windSpeed" | "precipitation"; // Add more as needed
+export type WeatherParameter =
+  | "temperature"
+  | "windSpeed"
+  | "humidity"
+  | "weatherCode"; // Add more as needed
 
 export interface ICondition {
   parameter: WeatherParameter;

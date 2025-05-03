@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
-import apiClient from "../api"; // Import our configured axios instance
+import apiClient from "../api";
+import {
+  getWeatherIcon,
+  getWeatherDescription,
+  DEFAULT_WEATHER_FIELDS,
+} from "../utils/weatherUtils";
 
-// MUI Components
 import Box from "@mui/material/Box";
 import Grid from "@mui/material/Grid";
 import Card from "@mui/material/Card";
@@ -9,12 +13,6 @@ import CardContent from "@mui/material/CardContent";
 import Typography from "@mui/material/Typography";
 import CircularProgress from "@mui/material/CircularProgress";
 import Alert from "@mui/material/Alert";
-
-// MUI Icons (Add necessary icons)
-import WbSunnyIcon from "@mui/icons-material/WbSunny"; // Clear
-import CloudIcon from "@mui/icons-material/Cloud"; // Cloudy variations
-import GrainIcon from "@mui/icons-material/Grain"; // Rain/Drizzle
-import HelpOutlineIcon from "@mui/icons-material/HelpOutline"; // Fallback
 import ThermostatIcon from "@mui/icons-material/Thermostat"; // Temperature
 import AirIcon from "@mui/icons-material/Air"; // Wind Speed
 import WaterDropIcon from "@mui/icons-material/WaterDrop"; // Precipitation
@@ -22,67 +20,27 @@ import WaterDropIcon from "@mui/icons-material/WaterDrop"; // Precipitation
 interface WeatherData {
   temperature?: number;
   windSpeed?: number;
-  precipitationIntensity?: number;
-  weatherCode?: number | string; // Or appropriate type based on Tomorrow.io codes
-  // Add other fields as needed from the API response
+  humidity?: number;
+  weatherCode?: number | string;
 }
 
 interface WeatherDisplayProps {
   location: string; // e.g., "London" or "40.7128,-74.0060"
+  fields?: string[];
 }
 
-// Helper to map weather codes to readable names (basic example)
-// Based on: https://docs.tomorrow.io/reference/data-layers-weather-codes
-const getWeatherDescription = (code: number | string | undefined): string => {
-  const codeStr = String(code);
-  // This is a very simplified mapping, the Tomorrow.io docs have many more
-  const map: { [key: string]: string } = {
-    "1000": "Clear",
-    "1001": "Cloudy",
-    "1100": "Mostly Clear",
-    "1101": "Partly Cloudy",
-    "1102": "Mostly Cloudy",
-    "4000": "Drizzle",
-    "4001": "Rain",
-    "4200": "Light Rain",
-    "4201": "Heavy Rain",
-  };
-  return map[codeStr] || `Code: ${codeStr}`; // Fallback to code
-};
-
-// Helper to map weather codes to MUI Icons
-const getWeatherIcon = (
-  code: number | string | undefined
-): React.ReactElement => {
-  const codeStr = String(code);
-  switch (codeStr) {
-    case "1000": // Clear
-    case "1100": // Mostly Clear
-      return <WbSunnyIcon sx={{ fontSize: 40, color: "#ffeb3b" }} />; // Yellow sun
-    case "1001": // Cloudy
-    case "1101": // Partly Cloudy
-    case "1102": // Mostly Cloudy
-      return <CloudIcon sx={{ fontSize: 40, color: "#bdbdbd" }} />; // Gray cloud
-    case "4000": // Drizzle
-    case "4001": // Rain
-    case "4200": // Light Rain
-    case "4201": // Heavy Rain
-      return <GrainIcon sx={{ fontSize: 40, color: "#64b5f6" }} />; // Blueish rain drops
-    // Add more cases for other codes (Snow, Fog, Thunderstorm etc.)
-    default:
-      return <HelpOutlineIcon sx={{ fontSize: 40, color: "text.secondary" }} />; // Fallback question mark
-  }
-};
-
-const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
+const WeatherDisplay: React.FC<WeatherDisplayProps> = ({
+  location,
+  fields = DEFAULT_WEATHER_FIELDS,
+}) => {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!location) {
-      setWeather(null); // Clear weather if location is cleared
-      setLoading(false); // Not loading if no location
+      setWeather(null);
+      setLoading(false);
       setError(null);
       return;
     }
@@ -92,7 +50,9 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
       setWeather(null);
       try {
         const encodedLocation = encodeURIComponent(location);
-        const response = await apiClient.get(`/weather/${encodedLocation}`);
+        const response = await apiClient.get(
+          `/weather/${encodedLocation}?fields=${fields.join(",")}`
+        );
         setWeather(response.data);
       } catch (err: any) {
         console.error("Failed to fetch weather:", err);
@@ -105,7 +65,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
       setLoading(false);
     };
     fetchWeather();
-  }, [location]);
+  }, [location, fields]);
 
   // --- Loading State ---
   if (loading) {
@@ -138,7 +98,6 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
   }
 
   if (!weather) {
-    // Render nothing if no location or no data after loading/error checks
     return null;
   }
 
@@ -185,7 +144,7 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
           </Card>
         </Grid>
       )}
-      {weather.precipitationIntensity !== undefined && (
+      {weather.humidity !== undefined && (
         <Grid size={{ xs: 6, sm: 3 }}>
           <Card variant="outlined">
             <CardContent sx={{ textAlign: "center", p: 2 }}>
@@ -196,10 +155,10 @@ const WeatherDisplay: React.FC<WeatherDisplayProps> = ({ location }) => {
                 sx={{ fontSize: 12, color: "text.secondary" }}
                 gutterBottom
               >
-                Precipitation
+                Humidity
               </Typography>
               <Typography variant="h6" component="div">
-                {weather.precipitationIntensity} mm/hr
+                {weather.humidity} %
               </Typography>
             </CardContent>
           </Card>

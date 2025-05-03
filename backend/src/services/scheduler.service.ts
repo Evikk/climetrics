@@ -1,16 +1,16 @@
 import schedule from "node-schedule";
 import { Twilio } from "twilio";
+import { ICondition, ILocation, WeatherParameter } from "@acme/types";
 
 import Logger from "../utils/logger";
 import AlertModel, { IAlertDocument } from "../models/Alert.model";
 import { fetchWeatherData, WeatherData } from "./weather.service";
-import { IAlert, ICondition, ILocation, WeatherParameter } from "@acme/types";
 
-// Map condition parameters to WeatherData properties if they differ
 const parameterMap: { [key in WeatherParameter]?: keyof WeatherData } = {
   temperature: "temperature",
   windSpeed: "windSpeed",
-  precipitation: "precipitationIntensity", // Map 'precipitation' condition to 'precipitationIntensity' data
+  humidity: "humidity",
+  weatherCode: "weatherCode",
 };
 
 class SchedulerService {

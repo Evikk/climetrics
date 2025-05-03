@@ -15,7 +15,7 @@ const darkTheme = createTheme({
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ThemeProvider theme={darkTheme}>
-      <CssBaseline /> {/* Apply baseline reset and dark background */}
+      <CssBaseline />
       <App />
     </ThemeProvider>
   </React.StrictMode>

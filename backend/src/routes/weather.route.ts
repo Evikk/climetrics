@@ -8,7 +8,6 @@ dotenv.config(); // Load environment variables
 
 const router = Router();
 
-// --- GET /api/weather/:location - Fetch real-time weather ---
 router.get(
   "/:location",
   validateRequest(getWeatherSchema),

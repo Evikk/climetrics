@@ -2,17 +2,21 @@ import axios from "axios";
 import Logger from "../utils/logger";
 import { getMockWeatherResponse, mockWeatherData } from "../mocks/weather.mock";
 
-// Environment variables and constants
 const TOMORROW_IO_API_KEY = process.env.TOMORROW_IO_API_KEY;
 const TOMORROW_IO_API_URL = "https://api.tomorrow.io/v4/weather/realtime";
-const USE_MOCK_API = process.env.USE_MOCK_API === "true"; // Read from env again
+const USE_MOCK_API = process.env.USE_MOCK_API === "true";
 
-// Interface for the expected weather data structure returned by this service
-// This should match the relevant parts of the ICondition parameter
+const DEFAULT_WEATHER_FIELDS = [
+  "temperature",
+  "windSpeed",
+  "humidity",
+  "weatherCode",
+];
+
 export interface WeatherData {
   temperature?: number;
   windSpeed?: number;
-  precipitationIntensity?: number;
+  humidity?: number;
   weatherCode?: number;
 }
 
@@ -26,14 +30,9 @@ const isCoordinates = (location: string): boolean => {
   );
 };
 
-/**
- * Fetches real-time weather data for a given location.
- * @param location String representing the location (e.g., "London" or "40.71,-74.00")
- * @returns A Promise resolving to the WeatherData object.
- * @throws An error if fetching fails or the API key is missing (when not using mocks).
- */
 export const fetchWeatherData = async (
-  location: string
+  location: string,
+  fields: string[] = DEFAULT_WEATHER_FIELDS
 ): Promise<WeatherData> => {
   Logger.debug(`[WeatherService] Fetching weather for location: ${location}`);
 
@@ -44,15 +43,7 @@ export const fetchWeatherData = async (
     );
     try {
       const mockResponse = getMockWeatherResponse(location);
-      // Ensure the mock response structure is correct before returning
       const weatherData = mockResponse.data?.values;
-      if (!weatherData) {
-        Logger.error(
-          "[WeatherService] Mock data generation failed or invalid structure",
-          { location }
-        );
-        throw new Error("Mock data generation failed");
-      }
       Logger.info(
         `[WeatherService] Successfully returned mock weather for: ${location}`
       );
@@ -60,7 +51,7 @@ export const fetchWeatherData = async (
       return {
         temperature: weatherData.temperature,
         windSpeed: weatherData.windSpeed,
-        precipitationIntensity: weatherData.precipitationIntensity,
+        humidity: weatherData.humidity,
         weatherCode: weatherData.weatherCode,
       };
     } catch (mockError: any) {
@@ -81,28 +72,16 @@ export const fetchWeatherData = async (
     throw new Error("Server configuration error: Weather API key missing.");
   }
 
-  let locationQuery: string;
-  if (isCoordinates(location)) {
-    locationQuery = location;
-  } else {
-    locationQuery = encodeURIComponent(location);
-  }
-
-  const fields = [
-    "temperature",
-    "windSpeed",
-    "precipitationIntensity",
-    "weatherCode",
-    // Add any other fields needed for alert conditions
-  ];
-  const units = "metric";
+  const locationQuery: string = isCoordinates(location)
+    ? location
+    : encodeURIComponent(location);
 
   try {
     const response = await axios.get(TOMORROW_IO_API_URL, {
       params: {
         location: locationQuery,
         fields: fields.join(","),
-        units: units,
+        units: "metric",
         apikey: TOMORROW_IO_API_KEY,
       },
       timeout: 10000,
@@ -123,14 +102,13 @@ export const fetchWeatherData = async (
     Logger.info(
       `[WeatherService] Successfully fetched real weather for: ${location}`
     );
-    // Map the response to our WeatherData interface
-    const weatherData: WeatherData = {
+
+    return {
       temperature: responseData.temperature,
       windSpeed: responseData.windSpeed,
-      precipitationIntensity: responseData.precipitationIntensity,
+      humidity: responseData.humidity,
       weatherCode: responseData.weatherCode,
     };
-    return weatherData;
   } catch (error: any) {
     Logger.error(
       `[WeatherService] Error fetching real weather for ${locationQuery}`,
