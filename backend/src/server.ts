@@ -48,7 +48,8 @@ class Server {
   }
 
   private startScheduler(): void {
-    const cronExpression = process.env.SCHEDULER_CRON_EXPRESSION || "* * * * *";
+    const cronExpression =
+      process.env.SCHEDULER_CRON_EXPRESSION || "*/5 * * * *"; // Check every 5 minutes
     this.schedulerService.start(cronExpression);
     Logger.info(`Scheduler started with cron expression: ${cronExpression}`);
   }

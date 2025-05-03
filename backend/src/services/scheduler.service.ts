@@ -183,12 +183,8 @@ class SchedulerService {
     }
   }
 
-  /**
-   * Starts the scheduler to run checkAlerts periodically.
-   * Defaults to running every minute.
-   */
   public start(
-    cronExpression: string = "* * * * *",
+    cronExpression: string = "*/5 * * * *",
     runImmediately: boolean = false
   ): void {
     if (this.job) {
@@ -216,9 +212,6 @@ class SchedulerService {
     Logger.info(`${this.schedulerServiceName} Scheduler started.`);
   }
 
-  /**
-   * Stops the scheduled job.
-   */
   public stop(): void {
     if (this.job) {
       this.job.cancel();

@@ -1,4 +1,4 @@
-# Full-Stack Weather Alert System
+# Climetrics - Weather Alert Web Application
 
 This project is a full-stack weather alert system. It allows users to create weather alerts based on location and conditions (e.g., temperature > 30°C). A backend service periodically checks real-time weather data from the Tomorrow.io API against these alerts. If an alert's condition is met, its status is updated to "triggered", and an optional SMS notification can be sent via Twilio. A React frontend provides a user interface to view current weather, create/manage alerts, and see which alerts are currently triggered.
 
@@ -20,9 +20,7 @@ This repository uses a monorepo structure:
 
 - **Node.js:** Version 20.x or higher recommended (due to frontend dependencies). Using `nvm` (Node Version Manager) is suggested.
 - **npm:** Should be installed with Node.js.
-- **MongoDB URI:** Connection string for your MongoDB database (local or cloud-hosted like MongoDB Atlas).
 - **Tomorrow.io API Key:** Obtain an API key from [Tomorrow.io](https://app.tomorrow.io/signup).
-- **Twilio Account:** Obtain an Account SID, Auth Token, and a Twilio phone number from [Twilio](https://www.twilio.com/try-twilio).
 
 ## Setup Instructions
 
@@ -86,9 +84,37 @@ You need to run both the backend and frontend servers concurrently.
 3.  **Access the Application:**
     - Open your web browser and navigate to the URL provided by the Vite server (usually `http://localhost:5173`).
 
-## Notes & Assumptions
+## Testing
 
-- The scheduled job in the backend runs every 5 minutes by default (`*/5 * * * *`) to check alert conditions.
-- Basic error handling is implemented, but can be improved.
-- Styling is minimal.
-- Alert deletion/editing is not implemented.
+The backend includes unit/integration tests written with Jest.
+
+1.  **Navigate to the backend directory:**
+    ```bash
+    cd backend
+    ```
+2.  **Run the tests:**
+    ```bash
+    npm test
+    ```
+
+## Notes, Architecture, & Potential Improvements
+
+**Architecture Choices & Tradeoffs:**
+
+- **Node.js/Express Backend:** Standard, performant choice for I/O-bound tasks like API requests. Single-threaded nature requires care for CPU-intensive work (not a major factor here).
+- **React/Vite Frontend:** Provides a modern, fast development experience and a component-based UI.
+- **MongoDB:** Flexible NoSQL database, good for evolving schemas. May require more careful data consistency management compared to SQL. Complex queries/joins can be less performant.
+- **`node-schedule` for Job Scheduling:** Simple implementation for periodic tasks running within the backend process.
+  - **Tradeoff:** If the backend server instance crashes, scheduled jobs stop. It doesn't scale horizontally well (multiple instances would run the same job multiple times). A more robust solution for production might involve a dedicated job queue system (e.g., BullMQ, RabbitMQ) or a distributed cron service.
+- **REST API:** Standard communication protocol between frontend and backend.
+
+**Current Limitations & Potential Improvements:**
+
+- **Missing Features:**
+  - Alert deletion and editing functionality is not implemented.
+  - User authentication/authorization: Currently, the system is open.
+- **Frontend Testing:** No automated tests are set up for the React frontend.
+- **API Optimization:** Caching is not implemented, ideally we would like to cache the get weather API call with a somewhat short TTL (weather doesn't change that often).
+- **Configuration:** The job schedule interval (currently 5 minutes) is hardcoded.
+- **API Key Security:** The Tomorrow.io API key is stored in a `.env` file. For production, consider more secure secret management solutions.
+- **UI/UX:** Styling is minimal using basic MUI components.
